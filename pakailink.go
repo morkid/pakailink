@@ -2,10 +2,16 @@ package pakailink
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -117,7 +123,7 @@ func (p *PakaiLink) request(path string, body any, requestID string) (res *http.
 		strAuthSig, err = internal.SHA256WithRSA(
 			p.Config.PrivateKey, p.Config.ClientKey+"|"+tstamp)
 
-		authReq.Header.Add("X-CLIENT-KEY", strAuthSig)
+		authReq.Header.Add("X-SIGNATURE", strAuthSig)
 
 		var authRes *http.Response
 		if err == nil {
@@ -142,14 +148,21 @@ func (p *PakaiLink) request(path string, body any, requestID string) (res *http.
 		}
 	}
 
+	var sig string
+
 	if err == nil {
+		sig, err = GenerateTransactionSignature("POST", path, token, jsonBody, tstamp, p.Config.ClientSecret)
+	}
+
+	if err == nil {
+
 		req.Header.Add("Content-type", "application/json;charset=utf-8")
 		req.Header.Add("Authorization", "Bearer "+token)
 		req.Header.Add("X-EXTERNAL-ID", requestID)
-		req.Header.Add("X-CHANNEL-ID", p.Config.ChannelID)
+		req.Header.Add("CHANNEL-ID", p.Config.ChannelID)
 		req.Header.Add("X-PARTNER-ID", p.Config.PartnerID)
 		req.Header.Add("X-TIMESTAMP", tstamp)
-		req.Header.Add("X-SIGNATURE", p.signature(req.Method, req.URL.Path, body, date))
+		req.Header.Add("X-SIGNATURE", sig)
 
 		res, err = p.client().Do(req)
 	}
@@ -160,7 +173,16 @@ func (p *PakaiLink) request(path string, body any, requestID string) (res *http.
 		res.Body.Close()
 		res.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		out := map[string]any{}
-		json.Unmarshal(bodyBytes, &out)
+		err = json.Unmarshal(bodyBytes, &out)
+
+		if err != nil {
+			re := regexp.MustCompile("}{")
+			if re.Match(bodyBytes) {
+				bodyString := string(bodyBytes)
+				bodyString = fmt.Sprintf(`{"errors":[%s]}`, strings.ReplaceAll(bodyString, "}{", "},{"))
+				json.Unmarshal([]byte(bodyString), &out)
+			}
+		}
 
 		err = NewHTTPLog(
 			"CREATE_VA",
@@ -244,4 +266,42 @@ func (z *HttpLog) New(tag, method, url string, req, res any, status int, headers
 func NewHTTPLog(tag, method, url string, req, res any, status int, headers http.Header) *HttpLog {
 	httpLog := new(HttpLog)
 	return httpLog.New(tag, method, url, req, res, status, headers)
+}
+
+func GenerateTransactionSignature(
+	method string,
+	endpoint string,
+	accessToken string,
+	requestBody any,
+	timestamp string,
+	secretKey string,
+) (sig string, err error) {
+	var jsonBody []byte
+
+	if str, ok := requestBody.(string); ok {
+		jsonBody = []byte(str)
+	} else if bte, ok := requestBody.([]byte); ok {
+		jsonBody = bte
+	} else {
+		jsonBody, err = json.Marshal(requestBody)
+	}
+
+	if err == nil {
+		hash := sha256.Sum256(jsonBody)
+		hashHex := hex.EncodeToString(hash[:])
+		stringToSign := strings.Join([]string{
+			method,
+			endpoint,
+			accessToken,
+			strings.ToLower(hashHex),
+			timestamp,
+		}, ":")
+
+		mac := hmac.New(sha512.New, []byte(secretKey))
+		mac.Write([]byte(stringToSign))
+
+		sig = base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	}
+
+	return
 }

@@ -15,8 +15,8 @@ github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWE
 github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
 github.com/mattn/go-runewidth v0.0.16 h1:E5ScNMtiwvlvB5paMFdw9p4kSQzbXFikJ5SQO6TULQc=
 github.com/mattn/go-runewidth v0.0.16/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh153qUoGf23w=
-github.com/morkid/hc v1.0.0 h1:BmcanFaMiJwYsQWn6ifKgivBY7q/hJ1t1FafCXmFCBI=
-github.com/morkid/hc v1.0.0/go.mod h1:axbp2yPkaEJd+1DoQiSkgqFMYC/4IOWrLgqW04ZYnrk=
+github.com/morkid/hc v1.0.1 h1:txyr6KSHdpx9xu49ww6QX1p0/9wIYa3X/2BhW7m5Nx0=
+github.com/morkid/hc v1.0.1/go.mod h1:axbp2yPkaEJd+1DoQiSkgqFMYC/4IOWrLgqW04ZYnrk=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/rivo/uniseg v0.2.0 h1:S1pD9weZBuJdFmowNwbpi7BJ8TNftyUImj/0WQi72jY=
