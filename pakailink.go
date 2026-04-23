@@ -216,7 +216,7 @@ type TransactionStatusResponse struct {
 	OriginalExternalID         string         `json:"originalExternalId,omitempty" example:"06ffceaf-365c-4150-bf14-c8b0906e7106"`
 	OriginalPartnerReferenceNo string         `json:"originalPartnerReferenceNo,omitempty" example:"06ffceaf-365c-4150-bf14-c8b0906e7106"`
 	OriginalReferenceNo        string         `json:"originalReferenceNo,omitempty" example:"9755794030382667748"`
-	PaidTime                   string         `json:"paidTime,omitempty" example:""`
+	PaidTime                   string         `json:"paidTime,omitempty" format:"date-time"`
 	ResponseCode               string         `json:"responseCode,omitempty" example:"2003300"`
 	ResponseMessage            string         `json:"responseMessage,omitempty" example:"Successful"`
 	ServiceCode                string         `json:"serviceCode,omitempty" example:"35"`
