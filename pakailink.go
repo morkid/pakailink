@@ -86,7 +86,7 @@ func (v *VARequest) ToMap() map[string]any {
 			Currency: v.Currency,
 			Value:    &DecimalFloat{big.NewFloat(v.Amount)},
 		},
-		"additionalInfo": AdditionalVaInfo{
+		"additionalInfo": AdditionalInfo{
 			CallbackURL: v.CallbackURL,
 			BankCode:    v.BankCode,
 		},
@@ -101,19 +101,27 @@ type VAResponse struct {
 
 // VAData is the data for the virtual account.
 type VAData struct {
-	AdditionalInfo     AdditionalVaInfo `json:"additionalInfo"`
-	CustomerNo         string           `json:"customerNo" example:"131857418122353"`
-	ExpiryDate         time.Time        `json:"expiryDate" example:"2022-01-01T00:00:00+07:00"`
-	PartnerReferenceNo string           `json:"partnerReferenceNo" example:"vg9QJ0oABHXufO1tkV2UhroVpBFX3L9nkn9T"`
-	TotalAmount        Balance          `json:"totalAmount" example:"100000.0"`
-	VirtualAccountNo   string           `json:"virtualAccountNo" example:"391072020012345"`
+	AdditionalInfo     AdditionalInfo `json:"additionalInfo"`
+	CustomerNo         string         `json:"customerNo" example:"131857418122353"`
+	ExpiryDate         time.Time      `json:"expiryDate" example:"2022-01-01T00:00:00+07:00"`
+	PartnerReferenceNo string         `json:"partnerReferenceNo" example:"vg9QJ0oABHXufO1tkV2UhroVpBFX3L9nkn9T"`
+	TotalAmount        Balance        `json:"totalAmount" example:"100000.0"`
+	VirtualAccountNo   string         `json:"virtualAccountNo" example:"391072020012345"`
 }
 
-// AdditionalVaInfo is the additional information for the virtual account.
-type AdditionalVaInfo struct {
-	CallbackURL string `json:"callbackUrl,omitempty" example:"http://callback/url"`
-	BankCode    Bank   `json:"bankCode,omitempty" example:"014"`
-	ReferenceNo string `json:"referenceNo,omitempty" example:"131857418122353"`
+// AdditionalInfo is the additional information for the virtual account.
+type AdditionalInfo struct {
+	CallbackURL  string   `json:"callbackUrl,omitempty" example:"http://callback/url"`
+	Callback     string   `json:"callback,omitempty" example:"http://callback/url"`
+	BankCode     Bank     `json:"bankCode,omitempty" example:"014"`
+	ReferenceNo  string   `json:"referenceNo,omitempty" example:"131857418122353"`
+	NominalPaid  *Balance `json:"nominalPaid,omitempty"`
+	ServiceFee   *Balance `json:"serviceFee,omitempty"`
+	TotalPaid    *Balance `json:"totalPaid,omitempty"`
+	TotalReceive *Balance `json:"totalReceive,omitempty"`
+	MDR          *Balance `json:"mdr,omitempty"`
+	CustomerData string   `json:"customerData,omitempty" example:"DOMPAY SANDBOX"`
+	RRN          string   `json:"rrn,omitempty" example:"1234567890"`
 }
 
 // BaseResponse is the base response for all API responses.
@@ -199,6 +207,42 @@ type BalanceResponse struct {
 	AccountInfo        []AccountInfoResponse `json:"accountInfo"`
 }
 
+// TransactionStatusResponse is the response from the VA status endpoint.
+type TransactionStatusResponse struct {
+	BaseResponse
+	AdditionalInfo             AdditionalInfo `json:"additionalInfo"`
+	Amount                     Balance        `json:"amount"`
+	LatestTransactionStatus    string         `json:"latestTransactionStatus,omitempty" example:"01"`
+	OriginalExternalID         string         `json:"originalExternalId,omitempty" example:"06ffceaf-365c-4150-bf14-c8b0906e7106"`
+	OriginalPartnerReferenceNo string         `json:"originalPartnerReferenceNo,omitempty" example:"06ffceaf-365c-4150-bf14-c8b0906e7106"`
+	OriginalReferenceNo        string         `json:"originalReferenceNo,omitempty" example:"9755794030382667748"`
+	PaidTime                   string         `json:"paidTime,omitempty" example:""`
+	ResponseCode               string         `json:"responseCode,omitempty" example:"2003300"`
+	ResponseMessage            string         `json:"responseMessage,omitempty" example:"Successful"`
+	ServiceCode                string         `json:"serviceCode,omitempty" example:"35"`
+	TransactionDate            time.Time      `json:"transactionDate,omitzero" format:"date-time"`
+	TransactionStatusDesc      string         `json:"transactionStatusDesc,omitempty" example:"Initiated"`
+}
+
+// IsPaid checks if the transaction is paid.
+func (t *TransactionStatusResponse) IsPaid() bool {
+	return t.GetPaidTime() != nil
+}
+
+// GetPaidTime returns the paid time if the transaction is paid, otherwise returns nil.
+func (t *TransactionStatusResponse) GetPaidTime() (paidTime *time.Time) {
+	if t.PaidTime != "" {
+		var err error
+		var paidAt time.Time
+		paidAt, err = time.Parse(time.RFC3339, t.PaidTime)
+		if err == nil {
+			paidTime = &paidAt
+		}
+	}
+
+	return
+}
+
 // accessToken is the access token response.
 type accessToken struct {
 	AccessToken string `json:"accessToken"`
@@ -224,6 +268,20 @@ func (p *PakaiLink) CreateVA(req VARequest) (va VAData, err error) {
 	return
 }
 
+// GetVAStatus gets the status of a virtual account.
+func (p *PakaiLink) GetVAStatus(id string) (va TransactionStatusResponse, err error) {
+	var res *http.Response
+	reqMap := map[string]any{
+		"originalPartnerReferenceNo": id,
+	}
+	res, err = p.request("/snap/v1.0/transfer-va/create-va-status", reqMap, uuid.NewString())
+	if err == nil {
+		va = unmarshalResponse(res, TransactionStatusResponse{})
+	}
+
+	return
+}
+
 // CreateQRIS Create QRIS MPM Code
 func (p *PakaiLink) CreateQRIS(id string, amount float64, expiredAt ...time.Time) (qris QRISResponse, err error) {
 	expiration := ""
@@ -241,7 +299,7 @@ func (p *PakaiLink) CreateQRIS(id string, amount float64, expiredAt ...time.Time
 			Currency: "IDR",
 		},
 		"validityPeriod": expiration,
-		"additionalInfo": AdditionalVaInfo{
+		"additionalInfo": AdditionalInfo{
 			CallbackURL: p.Config.CallbackURLForQRIS,
 		},
 	}
@@ -250,6 +308,20 @@ func (p *PakaiLink) CreateQRIS(id string, amount float64, expiredAt ...time.Time
 	res, err = p.request("/snap/v1.0/qr/qr-mpm-generate", req, id)
 	if err == nil {
 		qris = unmarshalResponse(res, QRISResponse{})
+	}
+
+	return
+}
+
+// GetQRISStatus gets the status of a QRIS transaction.
+func (p *PakaiLink) GetQRISStatus(id string) (qris TransactionStatusResponse, err error) {
+	var res *http.Response
+	reqMap := map[string]any{
+		"originalPartnerReferenceNo": id,
+	}
+	res, err = p.request("/snap/v1.0/qr/qr-mpm-status", reqMap, uuid.NewString())
+	if err == nil {
+		qris = unmarshalResponse(res, TransactionStatusResponse{})
 	}
 
 	return
