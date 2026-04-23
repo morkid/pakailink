@@ -6,7 +6,6 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/google/uuid v1.6.0
 	github.com/morkid/hc v1.0.1
-	golang.org/x/oauth2 v0.36.0
 )
 
 require (

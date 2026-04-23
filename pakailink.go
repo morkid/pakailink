@@ -21,6 +21,7 @@ import (
 	"github.com/morkid/pakailink/internal"
 )
 
+// Config is the configuration for the PakaiLink client.
 type Config struct {
 	BaseURL          string    // Base URL
 	PrivateKey       string    // Private Key
@@ -31,32 +32,42 @@ type Config struct {
 	ChannelID        string    // Channel ID
 	AccountNumber    string    // Account Number
 	CallbackURLForVA string    // Callback URL for VA
-	HttpConfig       hc.Config // HTTP Config
+	HTTPConfig       hc.Config // HTTP Config
 }
 
-type PakaiLinkBank string
+// Bank is the bank code for PakaiLink.
+type Bank string
 
 var (
-	BANK_BCA     = PakaiLinkBank("014")
-	BANK_BRI     = PakaiLinkBank("002")
-	BANK_BNI     = PakaiLinkBank("009")
-	BANK_BSI     = PakaiLinkBank("427")
-	BANK_BTN     = PakaiLinkBank("010")
-	BANK_CIMB    = PakaiLinkBank("022")
-	BANK_MANDIRI = PakaiLinkBank("008")
+	// BankBCA code: 014
+	BankBCA = Bank("014")
+	// BankBRI code: 002
+	BankBRI = Bank("002")
+	// BankBNI code: 009
+	BankBNI = Bank("009")
+	// BankBSI code: 427
+	BankBSI = Bank("427")
+	// BankBTN code: 010
+	BankBTN = Bank("010")
+	// BankCIMB code: 022
+	BankCIMB = Bank("022")
+	// BankMandiri code: 008
+	BankMandiri = Bank("008")
 )
 
+// VARequest is the request for creating a virtual account.
 type VARequest struct {
-	ID            uuid.UUID     `json:"id" format:"uuid"`
-	CustomerID    string        `json:"customer_id" example:"131857418122353"`
-	CustomerName  string        `json:"customer_name" example:"Pembayaran Test "`
-	CustomerPhone string        `json:"customer_phone" example:"081999999999"`
-	Amount        float64       `json:"amount" example:"100000.0"`
-	Currency      string        `json:"currency" example:"IDR"`
-	BankCode      PakaiLinkBank `json:"bank_code" example:"014"`
-	CallbackURL   string        `json:"callback_url" example:"http://callback/url"`
+	ID            uuid.UUID `json:"id" format:"uuid"`
+	CustomerID    string    `json:"customer_id" example:"131857418122353"`
+	CustomerName  string    `json:"customer_name" example:"Pembayaran Test "`
+	CustomerPhone string    `json:"customer_phone" example:"081999999999"`
+	Amount        float64   `json:"amount" example:"100000.0"`
+	Currency      string    `json:"currency" example:"IDR"`
+	BankCode      Bank      `json:"bank_code" example:"014"`
+	CallbackURL   string    `json:"callback_url" example:"http://callback/url"`
 }
 
+// ToMap converts the VARequest to a map.
 func (v *VARequest) ToMap() map[string]any {
 	if v.CallbackURL == "" {
 		v.CallbackURL = "http://callback/url"
@@ -69,7 +80,7 @@ func (v *VARequest) ToMap() map[string]any {
 		"virtualAccountPhone": v.CustomerPhone,
 		"totalAmount": Balance{
 			Currency: v.Currency,
-			Value:    big.NewFloat(v.Amount),
+			Value:    &DecimalFloat{big.NewFloat(v.Amount)},
 		},
 		"additionalInfo": AdditionalVaInfo{
 			CallbackURL: v.CallbackURL,
@@ -78,11 +89,13 @@ func (v *VARequest) ToMap() map[string]any {
 	}
 }
 
+// VAResponse is the response for creating a virtual account.
 type VAResponse struct {
 	BaseResponse
 	VirtualAccountData VAData `json:"virtualAccountData"`
 }
 
+// VAData is the data for the virtual account.
 type VAData struct {
 	AdditionalInfo     AdditionalVaInfo `json:"additionalInfo"`
 	CustomerNo         string           `json:"customerNo" example:"131857418122353"`
@@ -92,46 +105,55 @@ type VAData struct {
 	VirtualAccountNo   string           `json:"virtualAccountNo" example:"391072020012345"`
 }
 
+// AdditionalVaInfo is the additional information for the virtual account.
 type AdditionalVaInfo struct {
-	CallbackURL string        `json:"callback_url,omitempty" example:"http://callback/url"`
-	BankCode    PakaiLinkBank `json:"bank_code,omitempty" example:"014"`
-	ReferenceNo string        `json:"reference_no,omitempty" example:"131857418122353"`
+	CallbackURL string `json:"callbackUrl,omitempty" example:"http://callback/url"`
+	BankCode    Bank   `json:"bankCode,omitempty" example:"014"`
+	ReferenceNo string `json:"referenceNo,omitempty" example:"131857418122353"`
 }
 
+// BaseResponse is the base response for all API responses.
 type BaseResponse struct {
 	ResponseCode    string `json:"responseCode" example:"2001100"`
 	ResponseMessage string `json:"responseMessage" example:"Successful"`
 }
 
+// ErrorResponse is the error response for all API errors.
 type ErrorResponse struct {
 	BaseResponse
 	AdditionalInfo json.RawMessage `json:"additionalInfo" example:"Invalid response"`
 }
 
+// Balance is the balance response.
 type Balance struct {
-	Currency string     `json:"currency" example:"IDR"`
-	Value    *big.Float `json:"value" example:"100000.0"`
+	Currency string        `json:"currency" example:"IDR"`
+	Value    *DecimalFloat `json:"value" example:"100000.00"`
+}
+
+// DecimalFloat is the decimal float response.
+type DecimalFloat struct {
+	*big.Float
+}
+
+// MarshalJSON converts the DecimalFloat to a JSON string.
+func (d *DecimalFloat) MarshalJSON() ([]byte, error) {
+	floatVal, _ := d.Float64()
+	return fmt.Appendf(nil, `"%.2f"`, floatVal), nil
+}
+
+// UnmarshalJSON converts a JSON string to a DecimalFloat.
+func (d *DecimalFloat) UnmarshalJSON(data []byte) (err error) {
+	str := string(data)
+	str = str[1 : len(str)-1] // Remove quotes
+	f, _, err := big.ParseFloat(str, 10, 2, big.ToNearestEven)
+	if err == nil {
+		d.Float = f
+	}
+
+	return
 }
 
 // AccountInfoResponse is the response from the account info endpoint.
-// Example:
-//
-//	{
-//		"activeBalance": {
-//			"currency": "IDR",
-//			"value": "85280.00"
-//		},
-//		"balanceType": "Balance",
-//		"freezeBalance": {
-//			"currency": "IDR",
-//			"value": "0.00"
-//		},
-//		"holdBalance": {
-//			"currency": "IDR",
-//			"value": "0.00"
-//		},
-//		"status": "0001"
-//	}
 type AccountInfoResponse struct {
 	ActiveBalance Balance `json:"activeBalance"`
 	BalanceType   string  `json:"balanceType" example:"Balance"`
@@ -140,6 +162,7 @@ type AccountInfoResponse struct {
 	Status        string  `json:"status" example:"0001"`
 }
 
+// BalanceResponse is the response from the balance endpoint.
 type BalanceResponse struct {
 	BaseResponse
 	ReferenceNo        string                `json:"referenceNo" example:"INQ175307299959777708712406"`
@@ -149,15 +172,18 @@ type BalanceResponse struct {
 	AccountInfo        []AccountInfoResponse `json:"accountInfo"`
 }
 
+// accessToken is the access token response.
 type accessToken struct {
 	AccessToken string `json:"accessToken"`
 }
 
+// PakaiLink is the main struct for the PakaiLink API.
 type PakaiLink struct {
 	Config     Config
 	httpClient *http.Client
 }
 
+// CreateVA creates a virtual account.
 func (p *PakaiLink) CreateVA(req VARequest) (va VAData, err error) {
 	req.CallbackURL = p.Config.CallbackURLForVA
 
@@ -171,6 +197,7 @@ func (p *PakaiLink) CreateVA(req VARequest) (va VAData, err error) {
 	return
 }
 
+// GetBalance gets the balance.
 func (p *PakaiLink) GetBalance() (balance float64, err error) {
 	id := uuid.NewString()
 
@@ -195,6 +222,7 @@ func (p *PakaiLink) GetBalance() (balance float64, err error) {
 	return
 }
 
+// ValidateSignature validates the signature.
 func (p *PakaiLink) ValidateSignature(signature, body string) error {
 	return internal.SHA256WithRSAValidate(p.Config.PublicKey, body, signature)
 }
@@ -311,17 +339,19 @@ func (p *PakaiLink) request(path string, body any, requestID string) (res *http.
 
 func (p *PakaiLink) client() *http.Client {
 	if p.httpClient == nil {
-		p.httpClient = hc.New(p.Config.HttpConfig)
+		p.httpClient = hc.New(p.Config.HTTPConfig)
 	}
 
 	return p.httpClient
 }
 
+// New creates a new PakaiLink instance.
 func New(config Config) *PakaiLink {
 	return &PakaiLink{Config: config}
 }
 
-type HttpLog struct {
+// HTTPLog is the log for HTTP requests.
+type HTTPLog struct {
 	Tag          string            `json:"tag"`
 	URL          string            `json:"url"`
 	Method       string            `json:"method"`
@@ -331,11 +361,13 @@ type HttpLog struct {
 	ResponseBody any               `json:"response_body"`
 }
 
-func (z *HttpLog) Error() string {
+// Error returns the error message.
+func (z *HTTPLog) Error() string {
 	return fmt.Sprintf("%v", z.ResponseBody)
 }
 
-func (z *HttpLog) New(tag, method, url string, req, res any, status int, headers http.Header) *HttpLog {
+// New creates a new HTTPLog.
+func (z *HTTPLog) New(tag, method, url string, req, res any, status int, headers http.Header) *HTTPLog {
 	z.Tag = tag
 	z.Method = method
 	z.URL = url
@@ -354,11 +386,13 @@ func (z *HttpLog) New(tag, method, url string, req, res any, status int, headers
 	return z
 }
 
-func NewHTTPLog(tag, method, url string, req, res any, status int, headers http.Header) *HttpLog {
-	httpLog := new(HttpLog)
+// NewHTTPLog creates a new HTTPLog.
+func NewHTTPLog(tag, method, url string, req, res any, status int, headers http.Header) *HTTPLog {
+	httpLog := new(HTTPLog)
 	return httpLog.New(tag, method, url, req, res, status, headers)
 }
 
+// GenerateTransactionSignature generates a transaction signature.
 func GenerateTransactionSignature(
 	method string,
 	endpoint string,
