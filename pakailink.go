@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"math/rand"
 	"net/http"
 	"regexp"
 	"strings"
@@ -23,16 +24,19 @@ import (
 
 // Config is the configuration for the PakaiLink client.
 type Config struct {
-	BaseURL          string    // Base URL
-	PrivateKey       string    // Private Key
-	PublicKey        string    // Public Key
-	PartnerID        string    // Partner ID
-	ClientKey        string    // Client Key
-	ClientSecret     string    // Client Secret
-	ChannelID        string    // Channel ID
-	AccountNumber    string    // Account Number
-	CallbackURLForVA string    // Callback URL for VA
-	HTTPConfig       hc.Config // HTTP Config
+	BaseURL            string    // Base URL
+	PrivateKey         string    // Private Key
+	PublicKey          string    // Public Key
+	PartnerID          string    // Partner ID
+	ClientKey          string    // Client Key
+	ClientSecret       string    // Client Secret
+	ChannelID          string    // Channel ID
+	AccountNumber      string    // Account Number
+	CallbackURLForVA   string    // Callback URL for VA
+	CallbackURLForQRIS string    // Callback URL for QRIS
+	QRISMerchantID     string    // QRIS Merchant ID
+	QRISStoreID        string    // QRIS Store ID
+	HTTPConfig         hc.Config // HTTP Config
 }
 
 // Bank is the bank code for PakaiLink.
@@ -57,14 +61,14 @@ var (
 
 // VARequest is the request for creating a virtual account.
 type VARequest struct {
-	ID            uuid.UUID `json:"id" format:"uuid"`
-	CustomerID    string    `json:"customer_id" example:"131857418122353"`
-	CustomerName  string    `json:"customer_name" example:"Pembayaran Test "`
-	CustomerPhone string    `json:"customer_phone" example:"081999999999"`
-	Amount        float64   `json:"amount" example:"100000.0"`
-	Currency      string    `json:"currency" example:"IDR"`
-	BankCode      Bank      `json:"bank_code" example:"014"`
-	CallbackURL   string    `json:"callback_url" example:"http://callback/url"`
+	ID            string  `json:"id" format:"uuid"`
+	CustomerID    string  `json:"customer_id" example:"131857418122353"`
+	CustomerName  string  `json:"customer_name" example:"Pembayaran Test "`
+	CustomerPhone string  `json:"customer_phone" example:"081999999999"`
+	Amount        float64 `json:"amount" example:"100000.0"`
+	Currency      string  `json:"currency" example:"IDR"`
+	BankCode      Bank    `json:"bank_code" example:"014"`
+	CallbackURL   string  `json:"callback_url" example:"http://callback/url"`
 }
 
 // ToMap converts the VARequest to a map.
@@ -130,6 +134,29 @@ type Balance struct {
 	Value    *DecimalFloat `json:"value" example:"100000.00"`
 }
 
+// QRISResponse is the response for creating a QRIS.
+type QRISResponse struct {
+	BaseResponse
+	Amount             Balance `json:"amount"`
+	MerchantName       string  `json:"merchantName" example:"DOMPAY SANDBOX"`
+	PartnerReferenceNo string  `json:"partnerReferenceNo" example:"3586be11-1fbe-4e7c-a0da-8c70e0677535"`
+	QRContent          string  `json:"qrContent" example:"923023-2943.CO.SANBOX.WWW7233535800110000063204021012126070280303UKE51440014ID.CO.QRIS.WWW0215LQ12309846890140303UKE6294010900000004602120812345678900517LINKQUPAYREQ105160609test qris0709LI726MIGG99140002000104852453033605405255676008SIDOARJO520459995915"`
+	ReferenceNo        string  `json:"referenceNo" example:"QRA177692990601690604684815"`
+	StoreID            string  `json:"storeID" example:"STORE22"`
+	TerminalID         string  `json:"terminalID" example:"ID1024361878720"`
+	ValidityPeriod     string  `json:"validityPeriod" example:"20260424153826"`
+}
+
+// GetExpirationTime Get QRIS Code expiration time
+func (q *QRISResponse) GetExpirationTime() (exp *time.Time) {
+	t, err := time.Parse("20060102150405", q.ValidityPeriod)
+	if err == nil {
+		exp = &t
+	}
+
+	return exp
+}
+
 // DecimalFloat is the decimal float response.
 type DecimalFloat struct {
 	*big.Float
@@ -188,10 +215,41 @@ func (p *PakaiLink) CreateVA(req VARequest) (va VAData, err error) {
 	req.CallbackURL = p.Config.CallbackURLForVA
 
 	var res *http.Response
-	res, err = p.request("/snap/v1.0/transfer-va/create-va", req.ToMap(), req.ID.String())
+	res, err = p.request("/snap/v1.0/transfer-va/create-va", req.ToMap(), req.ID)
 	if err == nil {
 		out := unmarshalResponse(res, VAResponse{})
 		va = out.VirtualAccountData
+	}
+
+	return
+}
+
+// CreateQRIS Create QRIS MPM Code
+func (p *PakaiLink) CreateQRIS(id string, amount float64, expiredAt ...time.Time) (qris QRISResponse, err error) {
+	expiration := ""
+	if len(expiredAt) > 0 {
+		expiration = expiredAt[0].Format(time.RFC3339)
+	}
+
+	req := map[string]any{
+		"merchantId":         p.Config.QRISMerchantID,
+		"storeId":            p.Config.QRISStoreID,
+		"terminalId":         "ID" + randomNumber(12),
+		"partnerReferenceNo": id,
+		"amount": Balance{
+			Value:    &DecimalFloat{big.NewFloat(amount)},
+			Currency: "IDR",
+		},
+		"validityPeriod": expiration,
+		"additionalInfo": AdditionalVaInfo{
+			CallbackURL: p.Config.CallbackURLForQRIS,
+		},
+	}
+
+	var res *http.Response
+	res, err = p.request("/snap/v1.0/qr/qr-mpm-generate", req, id)
+	if err == nil {
+		qris = unmarshalResponse(res, QRISResponse{})
 	}
 
 	return
@@ -441,4 +499,9 @@ func unmarshalResponse[T any](res *http.Response, out T) T {
 	}
 
 	return out
+}
+
+// randomNumber generates a random number with the specified length.
+func randomNumber(len int) string {
+	return fmt.Sprintf("%d", rand.Intn(10^len))
 }
