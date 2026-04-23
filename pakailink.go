@@ -48,8 +48,8 @@ var (
 type VARequest struct {
 	ID            uuid.UUID     `json:"id" format:"uuid"`
 	CustomerID    string        `json:"customer_id" example:"131857418122353"`
-	CustomerName  string        `json:"customer_name" example:"John Doe"`
-	CustomerPhone string        `json:"customer_phone" example:"08191298123211"`
+	CustomerName  string        `json:"customer_name" example:"Pembayaran Test "`
+	CustomerPhone string        `json:"customer_phone" example:"081999999999"`
 	Amount        float64       `json:"amount" example:"100000.0"`
 	Currency      string        `json:"currency" example:"IDR"`
 	BankCode      PakaiLinkBank `json:"bank_code" example:"014"`
@@ -66,15 +66,86 @@ func (v *VARequest) ToMap() map[string]any {
 		"customerNo":          v.CustomerID,
 		"virtualAccountName":  v.CustomerName,
 		"virtualAccountPhone": v.CustomerPhone,
-		"totalAmount": map[string]any{
-			"value":    v.Amount,
-			"currency": v.Currency,
+		"totalAmount": Balance{
+			Currency: v.Currency,
+			Value:    v.Amount,
 		},
-		"additionalInfo": map[string]any{
-			"callbackUrl": v.CallbackURL,
-			"bankCode":    v.BankCode,
+		"additionalInfo": AdditionalVaInfo{
+			CallbackURL: v.CallbackURL,
+			BankCode:    v.BankCode,
 		},
 	}
+}
+
+type VAResponse struct {
+	BaseResponse
+	VirtualAccountData VAData `json:"virtualAccountData"`
+}
+
+type VAData struct {
+	AdditionalInfo     AdditionalVaInfo `json:"additionalInfo"`
+	CustomerNo         string           `json:"customerNo" example:"131857418122353"`
+	ExpiryDate         time.Time        `json:"expiryDate" example:"2022-01-01T00:00:00+07:00"`
+	PartnerReferenceNo string           `json:"partnerReferenceNo" example:"vg9QJ0oABHXufO1tkV2UhroVpBFX3L9nkn9T"`
+	TotalAmount        Balance          `json:"totalAmount" example:"100000.0"`
+	VirtualAccountNo   string           `json:"virtualAccountNo" example:"391072020012345"`
+}
+
+type AdditionalVaInfo struct {
+	CallbackURL string        `json:"callback_url,omitempty" example:"http://callback/url"`
+	BankCode    PakaiLinkBank `json:"bank_code,omitempty" example:"014"`
+	ReferenceNo string        `json:"reference_no,omitempty" example:"131857418122353"`
+}
+
+type BaseResponse struct {
+	ResponseCode    string `json:"responseCode" example:"2001100"`
+	ResponseMessage string `json:"responseMessage" example:"Successful"`
+}
+
+type ErrorResponse struct {
+	BaseResponse
+	AdditionalInfo json.RawMessage `json:"additionalInfo" example:"Invalid response"`
+}
+
+type Balance struct {
+	Currency string  `json:"currency" example:"IDR"`
+	Value    float64 `json:"value" example:"100000.0"`
+}
+
+// AccountInfoResponse is the response from the account info endpoint.
+// Example:
+//
+//	{
+//		"activeBalance": {
+//			"currency": "IDR",
+//			"value": "85280.00"
+//		},
+//		"balanceType": "Balance",
+//		"freezeBalance": {
+//			"currency": "IDR",
+//			"value": "0.00"
+//		},
+//		"holdBalance": {
+//			"currency": "IDR",
+//			"value": "0.00"
+//		},
+//		"status": "0001"
+//	}
+type AccountInfoResponse struct {
+	ActiveBalance Balance `json:"activeBalance"`
+	BalanceType   string  `json:"balanceType" example:"Balance"`
+	FreezeBalance Balance `json:"freezeBalance"`
+	HoldBalance   Balance `json:"holdBalance"`
+	Status        string  `json:"status" example:"0001"`
+}
+
+type BalanceResponse struct {
+	BaseResponse
+	ReferenceNo        string                `json:"referenceNo" example:"INQ175307299959777708712406"`
+	PartnerReferenceNo string                `json:"partnerReferenceNo" example:"vg9QJ0oABHXufO1tkV2UhroVpBFX3L9nkn9T"`
+	AccountNo          string                `json:"accountNo" example:"0310122755265432"`
+	Name               string                `json:"name" example:"Merchant Internal"`
+	AccountInfo        []AccountInfoResponse `json:"accountInfo"`
 }
 
 type PakaiLink struct {
@@ -82,10 +153,40 @@ type PakaiLink struct {
 	httpClient *http.Client
 }
 
-func (p *PakaiLink) CreateVA(req VARequest) {
+func (p *PakaiLink) CreateVA(req VARequest) (va VAData, err error) {
 	req.CallbackURL = p.Config.CallbackURLForVA
 
-	p.request("/snap/v1.0/transfer-va/create-va", req, req.ID.String())
+	var res *http.Response
+	res, err = p.request("/snap/v1.0/transfer-va/create-va", req.ToMap(), req.ID.String())
+	if err == nil {
+		out := unmarshalResponse(res, VAResponse{})
+		va = out.VirtualAccountData
+	}
+
+	return
+}
+
+func (p *PakaiLink) GetBalance() (balance float64) {
+	id := uuid.NewString()
+
+	req := map[string]any{
+		"partnerReferenceNo": id,
+		"accountNumber":      p.Config.AccountNumber,
+		"balanceType":        []string{"BALANCE"},
+	}
+
+	res, err := p.request("/snap/v1.0/balance-inquiry", req, id)
+	if err == nil {
+		bal := unmarshalResponse(res, BalanceResponse{})
+		for _, v := range bal.AccountInfo {
+			if v.BalanceType == "Balance" {
+				balance = v.ActiveBalance.Value
+				break
+			}
+		}
+	}
+
+	return
 }
 
 func (p *PakaiLink) ValidateSignature(signature, body string) error {
@@ -178,9 +279,17 @@ func (p *PakaiLink) request(path string, body any, requestID string) (res *http.
 		if err != nil {
 			re := regexp.MustCompile("}{")
 			if re.Match(bodyBytes) {
+				var errResponses struct {
+					Errors []ErrorResponse `json:"errors"`
+				}
 				bodyString := string(bodyBytes)
 				bodyString = fmt.Sprintf(`{"errors":[%s]}`, strings.ReplaceAll(bodyString, "}{", "},{"))
-				json.Unmarshal([]byte(bodyString), &out)
+				e := json.Unmarshal([]byte(bodyString), &errResponses)
+				if e == nil {
+					out["errors"] = errResponses.Errors
+				} else {
+					json.Unmarshal([]byte(bodyString), &out)
+				}
 			}
 		}
 
@@ -196,26 +305,6 @@ func (p *PakaiLink) request(path string, body any, requestID string) (res *http.
 	}
 
 	return
-}
-
-func (p *PakaiLink) signature(method, path string, body any, date time.Time) string {
-	var output string
-	jsonBody, err := json.Marshal(body)
-	if err == nil {
-		forms := []string{
-			method,
-			path,
-			internal.SHA256Hex(string(jsonBody)),
-			date.Format(time.RFC3339Nano),
-		}
-		strSign, err := internal.SHA256WithRSA(
-			p.Config.PrivateKey, strings.Join(forms, ":"))
-		if err == nil {
-			output = strSign
-		}
-	}
-
-	return output
 }
 
 func (p *PakaiLink) client() *http.Client {
@@ -304,4 +393,16 @@ func GenerateTransactionSignature(
 	}
 
 	return
+}
+
+func unmarshalResponse[T any](res *http.Response, out T) T {
+	var err error
+	var body []byte
+	body, err = io.ReadAll(res.Body)
+	if err == nil {
+		defer res.Body.Close()
+		json.Unmarshal(body, &out)
+	}
+
+	return out
 }
