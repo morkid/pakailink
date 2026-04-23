@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"regexp"
 	"strings"
@@ -68,7 +69,7 @@ func (v *VARequest) ToMap() map[string]any {
 		"virtualAccountPhone": v.CustomerPhone,
 		"totalAmount": Balance{
 			Currency: v.Currency,
-			Value:    v.Amount,
+			Value:    big.NewFloat(v.Amount),
 		},
 		"additionalInfo": AdditionalVaInfo{
 			CallbackURL: v.CallbackURL,
@@ -108,8 +109,8 @@ type ErrorResponse struct {
 }
 
 type Balance struct {
-	Currency string  `json:"currency" example:"IDR"`
-	Value    float64 `json:"value" example:"100000.0"`
+	Currency string     `json:"currency" example:"IDR"`
+	Value    *big.Float `json:"value" example:"100000.0"`
 }
 
 // AccountInfoResponse is the response from the account info endpoint.
@@ -148,6 +149,10 @@ type BalanceResponse struct {
 	AccountInfo        []AccountInfoResponse `json:"accountInfo"`
 }
 
+type accessToken struct {
+	AccessToken string `json:"accessToken"`
+}
+
 type PakaiLink struct {
 	Config     Config
 	httpClient *http.Client
@@ -166,21 +171,22 @@ func (p *PakaiLink) CreateVA(req VARequest) (va VAData, err error) {
 	return
 }
 
-func (p *PakaiLink) GetBalance() (balance float64) {
+func (p *PakaiLink) GetBalance() (balance float64, err error) {
 	id := uuid.NewString()
 
 	req := map[string]any{
 		"partnerReferenceNo": id,
-		"accountNumber":      p.Config.AccountNumber,
-		"balanceType":        []string{"BALANCE"},
+		"accountNo":          p.Config.AccountNumber,
+		"balanceTypes":       []string{"BALANCE"},
 	}
 
-	res, err := p.request("/snap/v1.0/balance-inquiry", req, id)
+	var res *http.Response
+	res, err = p.request("/snap/v1.0/balance-inquiry", req, id)
 	if err == nil {
 		bal := unmarshalResponse(res, BalanceResponse{})
 		for _, v := range bal.AccountInfo {
-			if v.BalanceType == "Balance" {
-				balance = v.ActiveBalance.Value
+			if v.BalanceType == "Balance" && v.ActiveBalance.Value != nil {
+				balance, _ = v.ActiveBalance.Value.Float64()
 				break
 			}
 		}
@@ -191,6 +197,38 @@ func (p *PakaiLink) GetBalance() (balance float64) {
 
 func (p *PakaiLink) ValidateSignature(signature, body string) error {
 	return internal.SHA256WithRSAValidate(p.Config.PublicKey, body, signature)
+}
+
+func (p *PakaiLink) getToken() (token string, err error) {
+	tstamp := time.Now().Format(time.RFC3339Nano)
+	var req *http.Request
+	var res *http.Response
+
+	uri := fmt.Sprintf("%s%s", p.Config.BaseURL, "/snap/v1.0/access-token/b2b")
+	req, err = http.NewRequest(
+		"POST", uri, strings.NewReader(`{"grantType":"client_credentials"}`))
+
+	if err == nil {
+		req.Header.Add("X-TIMESTAMP", tstamp)
+		req.Header.Add("Content-type", "application/json;charset=utf-8")
+		req.Header.Add("X-CLIENT-KEY", p.Config.ClientKey)
+		strAuthSig := ""
+		strAuthSig, err = internal.SHA256WithRSA(
+			p.Config.PrivateKey, p.Config.ClientKey+"|"+tstamp)
+
+		req.Header.Add("X-SIGNATURE", strAuthSig)
+
+		if err == nil {
+			res, err = p.client().Do(req)
+		}
+
+		if err == nil {
+			out := unmarshalResponse(res, accessToken{})
+			token = out.AccessToken
+		}
+	}
+
+	return
 }
 
 func (p *PakaiLink) request(path string, body any, requestID string) (res *http.Response, err error) {
@@ -208,45 +246,9 @@ func (p *PakaiLink) request(path string, body any, requestID string) (res *http.
 	}
 
 	var token string
-	var authReq *http.Request
 
 	if err == nil {
-		uri := fmt.Sprintf("%s%s", p.Config.BaseURL, "/snap/v1.0/access-token/b2b")
-		authReq, err = http.NewRequest(
-			"POST", uri, strings.NewReader(`{"grantType":"client_credentials"}`))
-	}
-
-	if err == nil {
-		authReq.Header.Add("X-TIMESTAMP", tstamp)
-		authReq.Header.Add("Content-type", "application/json;charset=utf-8")
-		authReq.Header.Add("X-CLIENT-KEY", p.Config.ClientKey)
-		strAuthSig := ""
-		strAuthSig, err = internal.SHA256WithRSA(
-			p.Config.PrivateKey, p.Config.ClientKey+"|"+tstamp)
-
-		authReq.Header.Add("X-SIGNATURE", strAuthSig)
-
-		var authRes *http.Response
-		if err == nil {
-			authRes, err = p.client().Do(authReq)
-		}
-
-		var out []byte
-		if err == nil {
-			out, err = io.ReadAll(authRes.Body)
-		}
-
-		jsonOut := struct {
-			AccessToken string `json:"accessToken"`
-		}{}
-
-		if err == nil {
-			err = json.Unmarshal(out, &jsonOut)
-		}
-
-		if err == nil {
-			token = jsonOut.AccessToken
-		}
+		token, err = p.getToken()
 	}
 
 	var sig string
