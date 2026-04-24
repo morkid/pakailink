@@ -243,6 +243,34 @@ func (t *TransactionStatusResponse) GetPaidTime() (paidTime *time.Time) {
 	return
 }
 
+// CallbackData is the data from the callback.
+type CallbackData struct {
+	TransactionData CallbackDataDetail `json:"transactionData"`
+}
+
+// CallbackDataDetail is the detail of the callback data.
+type CallbackDataDetail struct {
+	AdditionalInfo        AdditionalInfo `json:"additionalInfo"`
+	CallbackType          string         `json:"callbackType" example:"payment"`
+	CreditBalance         Balance        `json:"creditBalance"`
+	CustomerNo            string         `json:"customerNo" example:"CUST00000000001"`
+	FeeAmount             Balance        `json:"feeAmount"`
+	PaidAmount            Balance        `json:"paidAmount"`
+	PartnerReferenceNo    string         `json:"partnerReferenceNo" example:"b5a4294d-0ce9-4cfc-bc64-028996947eff"`
+	PaymentFlagReason     Reason         `json:"paymentFlagReason"`
+	PaymentFlagStatus     string         `json:"paymentFlagStatus" example:"00"`
+	ReferenceNo           string         `json:"referenceNo" example:"VAI177701711033881604990215"`
+	VirtualAccountName    string         `json:"virtualAccountName" example:"Harmony - Pembayaran Test "`
+	VirtualAccountNo      string         `json:"virtualAccountNo" example:"0198230123809091"`
+	VirtualAccountTrxType string         `json:"virtualAccountTrxType" example:"C"`
+}
+
+// Reason is the reason for the payment flag.
+type Reason struct {
+	English   string `json:"english" example:"Success"`
+	Indonesia string `json:"indonesia" example:"Sukses"`
+}
+
 // accessToken is the access token response.
 type accessToken struct {
 	AccessToken string `json:"accessToken"`
