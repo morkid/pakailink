@@ -122,6 +122,8 @@ type AdditionalInfo struct {
 	MDR          *Balance `json:"mdr,omitempty"`
 	CustomerData string   `json:"customerData,omitempty" example:"DOMPAY SANDBOX"`
 	RRN          string   `json:"rrn,omitempty" example:"1234567890"`
+	Issuer       string   `json:"issuer,omitempty" example:""`
+	Payor        string   `json:"payor,omitempty" example:""`
 }
 
 // BaseResponse is the base response for all API responses.
@@ -250,19 +252,29 @@ type CallbackData struct {
 
 // CallbackDataDetail is the detail of the callback data.
 type CallbackDataDetail struct {
-	AdditionalInfo        AdditionalInfo `json:"additionalInfo"`
-	CallbackType          string         `json:"callbackType" example:"payment"`
-	CreditBalance         Balance        `json:"creditBalance"`
-	CustomerNo            string         `json:"customerNo" example:"CUST00000000001"`
-	FeeAmount             Balance        `json:"feeAmount"`
-	PaidAmount            Balance        `json:"paidAmount"`
-	PartnerReferenceNo    string         `json:"partnerReferenceNo" example:"b5a4294d-0ce9-4cfc-bc64-028996947eff"`
-	PaymentFlagReason     Reason         `json:"paymentFlagReason"`
-	PaymentFlagStatus     string         `json:"paymentFlagStatus" example:"00"`
-	ReferenceNo           string         `json:"referenceNo" example:"VAI177701711033881604990215"`
-	VirtualAccountName    string         `json:"virtualAccountName" example:"Harmony - Pembayaran Test "`
-	VirtualAccountNo      string         `json:"virtualAccountNo" example:"0198230123809091"`
-	VirtualAccountTrxType string         `json:"virtualAccountTrxType" example:"C"`
+	BaseResponse
+	AdditionalInfo             AdditionalInfo `json:"additionalInfo"`
+	CallbackType               string         `json:"callbackType" example:"payment"`
+	CreditBalance              Balance        `json:"creditBalance"`
+	CustomerNo                 string         `json:"customerNo" example:"CUST00000000001"`
+	FeeAmount                  Balance        `json:"feeAmount"`
+	PaidAmount                 Balance        `json:"paidAmount"`
+	PartnerReferenceNo         string         `json:"partnerReferenceNo" example:"b5a4294d-0ce9-4cfc-bc64-028996947eff"`
+	PaymentFlagReason          Reason         `json:"paymentFlagReason"`
+	PaymentFlagStatus          string         `json:"paymentFlagStatus" example:"00"`
+	ReferenceNo                string         `json:"referenceNo" example:"VAI177701711033881604990215"`
+	VirtualAccountName         string         `json:"virtualAccountName" example:"Harmony - Pembayaran Test "`
+	VirtualAccountNo           string         `json:"virtualAccountNo" example:"0198230123809091"`
+	VirtualAccountTrxType      string         `json:"virtualAccountTrxType" example:"C"`
+	Amount                     Balance        `json:"amount"`
+	CreatedTime                string         `json:"createdTime,omitempty"`
+	FinishedTime               time.Time      `json:"finishedTime,omitempty"`
+	LatestTransactionStatus    string         `json:"latestTransactionStatus,omitempty" example:"00"`
+	OriginalExternalID         string         `json:"originalExternalId,omitempty" example:"6e893132-5159-4589-aa29-22e0250ceef0"`
+	OriginalPartnerReferenceNo string         `json:"originalPartnerReferenceNo,omitempty" example:"6e893132-5159-4589-aa29-22e0250ceef0"`
+	OriginalReferenceNo        string         `json:"originalReferenceNo,omitempty" example:"8326154965638343026"`
+	ServiceCode                string         `json:"serviceCode,omitempty" example:"52"`
+	TransactionStatusDesc      string         `json:"transactionStatusDesc,omitempty" example:"payment_success"`
 }
 
 // Reason is the reason for the payment flag.
