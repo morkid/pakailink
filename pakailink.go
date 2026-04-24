@@ -103,7 +103,7 @@ type VAResponse struct {
 type VAData struct {
 	AdditionalInfo     AdditionalInfo `json:"additionalInfo"`
 	CustomerNo         string         `json:"customerNo" example:"131857418122353"`
-	ExpiryDate         time.Time      `json:"expiryDate" example:"2022-01-01T00:00:00+07:00"`
+	ExpiredDate        time.Time      `json:"expiredDate" example:"2022-01-01T00:00:00+07:00"`
 	PartnerReferenceNo string         `json:"partnerReferenceNo" example:"vg9QJ0oABHXufO1tkV2UhroVpBFX3L9nkn9T"`
 	TotalAmount        Balance        `json:"totalAmount" example:"100000.0"`
 	VirtualAccountNo   string         `json:"virtualAccountNo" example:"391072020012345"`
