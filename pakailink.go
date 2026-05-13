@@ -49,11 +49,11 @@ var (
 	BankBRI = Bank("002")
 	// BankBNI code: 009
 	BankBNI = Bank("009")
-	// BankBSI code: 427
+	// BankBSI code: 427, temporary unsupported
 	BankBSI = Bank("427")
-	// BankBTN code: 010
+	// BankBTN code: 010, temporary unsupported
 	BankBTN = Bank("010")
-	// BankCIMB code: 022
+	// BankCIMB code: 022, temporary unsupported
 	BankCIMB = Bank("022")
 	// BankMandiri code: 008
 	BankMandiri = Bank("008")
@@ -289,6 +289,8 @@ type accessToken struct {
 }
 
 // PakaiLink is the main struct for the PakaiLink API.
+// Official Documentation: https://pakaidonk.id/dokumentasi-api/pakailink-snap/
+// Postman Collection: https://pakaidonk.id/dokumentasi-api/postman-collection/
 type PakaiLink struct {
 	Config     Config
 	httpClient *http.Client

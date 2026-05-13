@@ -1,0 +1,1983 @@
+{
+  "info": {
+    "_postman_id": "5baaf73b-84f3-474a-99d6-ba083e351968",
+    "name": "PAKAILINK-OPENAPI-SNAP-V1.0 PUBLISH",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "31221519"
+  },
+  "item": [
+    {
+      "name": "#1 ACCESS-TOKEN",
+      "item": [
+        {
+          "name": "AT001 - GET TOKEN B2B PARTNER",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const CryptoJS = require(\"crypto-js\")",
+                  "const forge = pm.require(\"npm:node-forge\")",
+                  "const uuid = require('uuid')",
+                  "const moment = pm.require(\"npm:moment\")",
+                  "",
+                  "var clientKey = pm.collectionVariables.get(\"X-CLIENT-KEY\")",
+                  "var privateKey = pm.collectionVariables.get(\"PRIVATE_KEY\")",
+                  "",
+                  "function SHA256withRSA(data, key) {",
+                  "    const privateKey = forge.pki.privateKeyFromPem(key)",
+                  "    const md = forge.md.sha256.create()",
+                  "    md.update(data, \"utf8\")",
+                  "",
+                  "    return Buffer.from(privateKey.sign(md), \"binary\").toString(\"base64\")",
+                  "}",
+                  "",
+                  "var tstamp = moment().format(\"YYYY-MM-DDTHH:mm:ssZ\")",
+                  "var stsign = clientKey + \"|\" + tstamp",
+                  "var sig = SHA256withRSA(stsign, privateKey)",
+                  "",
+                  "pm.collectionVariables.set(\"X-TIMESTAMP\", tstamp)",
+                  "pm.collectionVariables.set(\"X-SIGNATURE\", sig)",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {
+                  "npm:node-forge": {
+                    "id": "npm:node-forge"
+                  },
+                  "npm:moment": {
+                    "id": "npm:moment"
+                  }
+                },
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code == 200) {",
+                  "    var j = pm.response.json()",
+                  "    pm.collectionVariables.set(\"ACCESS-TOKEN\", j.accessToken)",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-TIMESTAMP",
+                "value": "{{X-TIMESTAMP}}",
+                "type": "text"
+              },
+              {
+                "key": "X-SIGNATURE",
+                "value": "{{X-SIGNATURE}}",
+                "type": "text"
+              },
+              {
+                "key": "X-CLIENT-KEY",
+                "value": "{{X-CLIENT-KEY}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"grantType\": \"client_credentials\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/snap/v1.0/access-token/b2b",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "snap",
+                "v1.0",
+                "access-token",
+                "b2b"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "#2 VIRTUAL-ACCOUNT",
+      "item": [
+        {
+          "name": "CASH-IN",
+          "item": [
+            {
+              "name": "VA001 - CREATE VA",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ACCESS-TOKEN}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-TIMESTAMP",
+                    "value": "{{X-TIMESTAMP}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-PARTNER-ID",
+                    "value": "{{X-PARTNER-ID}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-EXTERNAL-ID",
+                    "value": "{{externalId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-SIGNATURE",
+                    "value": "{{X-SIGNATURE}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "CHANNEL-ID",
+                    "value": "{{CHANNEL-ID}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"partnerReferenceNo\": \"{{externalId}}\",\n    \"customerNo\" : \"131857418122353\",\n\t\"virtualAccountName\" : \"Pembayaran Test \",\n    \"virtualAccountPhone\" : \"081999999999\",\n    \"totalAmount\": {\n        \"value\": \"10000.00\",\n        \"currency\": \"IDR\"\n    },\n    \"additionalInfo\": {\n        \"callbackUrl\": \"http://callback/partner\",\n        \"bankCode\": \"002\"\n    }   \n}\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/snap/v1.0/transfer-va/create-va",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "snap",
+                    "v1.0",
+                    "transfer-va",
+                    "create-va"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "VA001 - VA STATUS",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ACCESS-TOKEN}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-TIMESTAMP",
+                    "value": "2025-08-20T13:54:18+07:00",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-PARTNER-ID",
+                    "value": "{{X-PARTNER-ID}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-EXTERNAL-ID",
+                    "value": "{{externalId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-SIGNATURE",
+                    "value": "",
+                    "type": "text"
+                  },
+                  {
+                    "key": "CHANNEL-ID",
+                    "value": "{{CHANNEL-ID}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"originalPartnerReferenceNo\": \"NfANLqEBgleqptVWAWj7O7lNsjFZELtYhexA\"\n}\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/snap/v1.0/transfer-va/create-va-status",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "snap",
+                    "v1.0",
+                    "transfer-va",
+                    "create-va-status"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "#3 PAYMENT-EMONEY-RETAIL",
+      "item": [
+        {
+          "name": "RETAIL",
+          "item": [
+            {
+              "name": "R001 - MODERN RETAIL",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "// Fungsi untuk membuat string acak",
+                      "function generateRandomString(length) {",
+                      "    var result = '';",
+                      "    var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';",
+                      "    var charactersLength = characters.length;",
+                      "    for (var i = 0; i < length; i++) {",
+                      "        result += characters.charAt(Math.floor(Math.random() * charactersLength));",
+                      "    }",
+                      "    return result;",
+                      "}",
+                      "",
+                      "// Membuat variabel acak",
+                      "var partnerReferenceNo = generateRandomString(36);",
+                      "",
+                      "// Menyimpan nilai acak ke variabel Postman",
+                      "pm.variables.set(\"partnerReferenceNo\", partnerReferenceNo);",
+                      "",
+                      "const timestamp = Math.floor(Date.now() / 1000) % 10000000; // 7 digit terakhir ",
+                      "",
+                      "const randomPart = Math.floor(Math.random() * 1000); // Angka acak 3 digit",
+                      "const externalId = parseInt(`${timestamp}${randomPart}`.padEnd(10, '0').substring(0, 10));",
+                      "pm.variables.set(\"externalId\", externalId);",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ACCESS-TOKEN}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-TIMESTAMP",
+                    "value": "2025-01-30T12:38:12+07:00",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-PARTNER-ID",
+                    "value": "{{X-PARTNER-ID}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-EXTERNAL-ID",
+                    "value": "{{externalId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-SIGNATURE",
+                    "value": "{{X-SIGNATURE}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "CHANNEL-ID",
+                    "value": "{{CHANNEL-ID}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"partnerReferenceNo\": \"{{partnerReferenceNo}}\",\n    \"customerId\" : \"31857119\",\n\t\"customerName\" : \"Setya Wardana\",\n\t\"customerPhone\" : \"081999999999\",\n\t\"customerEmail\" : \"test@gmail.id\",\n    \"totalAmount\": {\n        \"value\": \"50000.00\",\n        \"currency\": \"IDR\"\n    },\n    \"additionalInfo\": {\n        \"productCode\": \"ALFAMART\",\n        \"remark\": \"Pembayaran\",\n        \"callbackUrl\": \"http://localhost:10007/callback/partner\"\n    }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/snap/v1.0/payment/modern-retail",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "snap",
+                    "v1.0",
+                    "payment",
+                    "modern-retail"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "R001 - MODERN RETAIL STATUS",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "// Fungsi untuk membuat string acak",
+                      "function generateRandomString(length) {",
+                      "    var result = '';",
+                      "    var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';",
+                      "    var charactersLength = characters.length;",
+                      "    for (var i = 0; i < length; i++) {",
+                      "        result += characters.charAt(Math.floor(Math.random() * charactersLength));",
+                      "    }",
+                      "    return result;",
+                      "}",
+                      "",
+                      "// Membuat variabel acak",
+                      "var partnerReferenceNo = generateRandomString(36);",
+                      "",
+                      "// Menyimpan nilai acak ke variabel Postman",
+                      "pm.variables.set(\"partnerReferenceNo\", partnerReferenceNo);",
+                      "",
+                      "const timestamp = Math.floor(Date.now() / 1000) % 10000000; // 7 digit terakhir ",
+                      "",
+                      "const randomPart = Math.floor(Math.random() * 1000); // Angka acak 3 digit",
+                      "const externalId = parseInt(`${timestamp}${randomPart}`.padEnd(10, '0').substring(0, 10));",
+                      "pm.variables.set(\"externalId\", externalId);",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ACCESS-TOKEN}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-TIMESTAMP",
+                    "value": "2025-01-30T12:38:12+07:00",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-PARTNER-ID",
+                    "value": "{{X-PARTNER-ID}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-EXTERNAL-ID",
+                    "value": "{{externalId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-SIGNATURE",
+                    "value": "{{X-SIGNATURE}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "CHANNEL-ID",
+                    "value": "{{CHANNEL-ID}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"originalPartnerReferenceNo\": \"NToUrPfYMUJNyzWNO0dQuEWx8SmYygFqVPIA\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/snap/v1.0/payment/modern-retail/status",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "snap",
+                    "v1.0",
+                    "payment",
+                    "modern-retail",
+                    "status"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "E-MONEY",
+          "item": [
+            {
+              "name": "EM001 - EMONEY",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "// Fungsi untuk membuat string acak",
+                      "function generateRandomString(length) {",
+                      "    var result = '';",
+                      "    var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';",
+                      "    var charactersLength = characters.length;",
+                      "    for (var i = 0; i < length; i++) {",
+                      "        result += characters.charAt(Math.floor(Math.random() * charactersLength));",
+                      "    }",
+                      "    return result;",
+                      "}",
+                      "",
+                      "// Membuat variabel acak",
+                      "var partnerReferenceNo = generateRandomString(36);",
+                      "",
+                      "// Menyimpan nilai acak ke variabel Postman",
+                      "pm.variables.set(\"partnerReferenceNo\", partnerReferenceNo);",
+                      "",
+                      "const timestamp = Math.floor(Date.now() / 1000) % 10000000; // 7 digit terakhir ",
+                      "",
+                      "const randomPart = Math.floor(Math.random() * 1000); // Angka acak 3 digit",
+                      "const externalId = parseInt(`${timestamp}${randomPart}`.padEnd(10, '0').substring(0, 10));",
+                      "pm.variables.set(\"externalId\", externalId);",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ACCESS-TOKEN}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-TIMESTAMP",
+                    "value": "{{X-TIMESTAMP}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-PARTNER-ID",
+                    "value": "{{X-PARTNER-ID}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-EXTERNAL-ID",
+                    "value": "{{externalId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-SIGNATURE",
+                    "value": "{{X-SIGNATURE}}",
+                    "type": "text",
+                    "disabled": true
+                  },
+                  {
+                    "key": "CHANNEL-ID",
+                    "value": "{{CHANNEL-ID}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"partnerReferenceNo\":  \"{{partnerReferenceNo}}\",\n    \"customerId\" : \"31857119\",\n\t\"customerName\" : \"Testing \",\n\t\"customerPhone\" : \"081999999999\",\n\t\"customerEmail\" : \"test@gmail.com\",\n    \"expiredDate\": \"2025-08-08T11:01:34+07:00\",\n    \"totalAmount\": {\n        \"value\": \"1000.00\",\n        \"currency\": \"IDR\"\n    },\n    \"additionalInfo\": {\n        \"productCode\": \"PAYGOPAY\",\n        \"emoneyPhone\" : \"081999999999\",\n        \"billTitle\" : \"Payment Order 0000001\",\n        \"callbackUrl\": \"http://localhost/callback/partner\"\n    }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/snap/v1.0/payment/emoney",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "snap",
+                    "v1.0",
+                    "payment",
+                    "emoney"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "EM002 - EMONEY STATUS",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ACCESS-TOKEN}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-TIMESTAMP",
+                    "value": "{{X-TIMESTAMP}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-PARTNER-ID",
+                    "value": "{{X-PARTNER-ID}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-EXTERNAL-ID",
+                    "value": "{{externalId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-SIGNATURE",
+                    "value": "{{X-SIGNATURE}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "CHANNEL-ID",
+                    "value": "{{CHANNEL-ID}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n   \"originalPartnerReferenceNo\": \"NToUrPfYMUJNyzWNO0dQuEWx8SmYygFqVPIA\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/snap/v1.0/payment/emoney-status",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "snap",
+                    "v1.0",
+                    "payment",
+                    "emoney-status"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "#6 QRIS",
+      "item": [
+        {
+          "name": "QR001 - MPM GENERATE",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Fungsi untuk membuat string acak",
+                  "function generateRandomString(length) {",
+                  "    var result = '';",
+                  "    var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';",
+                  "    var charactersLength = characters.length;",
+                  "    for (var i = 0; i < length; i++) {",
+                  "        result += characters.charAt(Math.floor(Math.random() * charactersLength));",
+                  "    }",
+                  "    return result;",
+                  "}",
+                  "",
+                  "// Membuat variabel acak",
+                  "var partnerReferenceNo = generateRandomString(36);",
+                  "",
+                  "// Menyimpan nilai acak ke variabel Postman",
+                  "pm.variables.set(\"partnerReferenceNo\", partnerReferenceNo);",
+                  "",
+                  "const timestamp = Math.floor(Date.now() / 1000) % 10000000; // 7 digit terakhir ",
+                  "",
+                  "const randomPart = Math.floor(Math.random() * 1000); // Angka acak 3 digit",
+                  "const externalId = parseInt(`${timestamp}${randomPart}`.padEnd(10, '0').substring(0, 10));",
+                  "pm.variables.set(\"externalId\", externalId);",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS-TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-TIMESTAMP",
+                "value": "{{X-TIMESTAMP}}",
+                "type": "text"
+              },
+              {
+                "key": "X-PARTNER-ID",
+                "value": "{{X-PARTNER-ID}}",
+                "type": "text"
+              },
+              {
+                "key": "X-EXTERNAL-ID",
+                "value": "{{externalId}}",
+                "type": "text"
+              },
+              {
+                "key": "X-SIGNATURE",
+                "value": "{{X-SIGNATURE}}",
+                "type": "text"
+              },
+              {
+                "key": "CHANNEL-ID",
+                "value": "{{CHANNEL-ID}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"merchantId\": \"1031331603\",\n    \"storeId\": \"HYPERPULSA\",\n    \"terminalId\": \"T021\",\n    \"partnerReferenceNo\": \"0198ae94-f132-70f8-a1ab-0405357ff35376\",\n    \"amount\": {\n        \"value\": \"10000.00\",\n        \"currency\": \"IDR\"\n    },\n    \"validityPeriod\": \"\",\n    \"additionalInfo\": {\n        \"callbackUrl\": \"http://localhost/callback/partner\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/snap/v1.0/qr/qr-mpm-generate",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "snap",
+                "v1.0",
+                "qr",
+                "qr-mpm-generate"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "QR002 - MPM STATUS",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS-TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-TIMESTAMP",
+                "value": "{{X-TIMESTAMP}}",
+                "type": "text"
+              },
+              {
+                "key": "X-PARTNER-ID",
+                "value": "{{X-PARTNER-ID}}",
+                "type": "text"
+              },
+              {
+                "key": "X-EXTERNAL-ID",
+                "value": "{{externalId}}",
+                "type": "text"
+              },
+              {
+                "key": "X-SIGNATURE",
+                "value": "{{X-SIGNATURE}}",
+                "type": "text"
+              },
+              {
+                "key": "CHANNEL-ID",
+                "value": "{{CHANNEL-ID}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"originalPartnerReferenceNo\": \"Mkbk7WbPyEB3PAYDI5ZlunhK02qOG8cPEZ4B\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/snap/v1.0/qr/qr-mpm-status",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "snap",
+                "v1.0",
+                "qr",
+                "qr-mpm-status"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "#7 DISBURSEMENT-BANK",
+      "item": [
+        {
+          "name": "TRANSFER-BANK",
+          "item": [
+            {
+              "name": "TB001 - INQUIRY BANK",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "// // Fungsi untuk membuat string acak",
+                      "// function generateRandomString(length) {",
+                      "//     var result = '';",
+                      "//     var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';",
+                      "//     var charactersLength = characters.length;",
+                      "//     for (var i = 0; i < length; i++) {",
+                      "//         result += characters.charAt(Math.floor(Math.random() * charactersLength));",
+                      "//     }",
+                      "//     return result;",
+                      "// }",
+                      "",
+                      "// // Membuat variabel acak",
+                      "// var partnerReferenceNo = generateRandomString(36);",
+                      "",
+                      "// // Menyimpan nilai acak ke variabel Postman",
+                      "// pm.variables.set(\"partnerReferenceNo\", partnerReferenceNo);",
+                      "",
+                      "// const timestamp = Math.floor(Date.now() / 1000) % 10000000; // 7 digit terakhir ",
+                      "",
+                      "// const randomPart = Math.floor(Math.random() * 1000); // Angka acak 3 digit",
+                      "// const externalId = parseInt(`${timestamp}${randomPart}`.padEnd(10, '0').substring(0, 10));",
+                      "// pm.variables.set(\"externalId\", externalId);",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ACCESS-TOKEN}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-TIMESTAMP",
+                    "value": "{{X-TIMESTAMP}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-PARTNER-ID",
+                    "value": "{{X-PARTNER-ID}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-EXTERNAL-ID",
+                    "value": "{{externalId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-SIGNATURE",
+                    "value": "{{X-SIGNATURE}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "CHANNEL-ID",
+                    "value": "{{CHANNEL-ID}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"partnerReferenceNo\": \"{{externalId}}\",\n    \"beneficiaryAccountNumber\" : \"111111\",\n    \"amount\": {\n        \"value\": \"10000.00\",\n        \"currency\": \"IDR\"\n    },\n    \"additionalInfo\": {\n        \"beneficiaryBankCode\": \"014\"\n    }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/snap/v1.0/emoney/bank-account-inquiry",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "snap",
+                    "v1.0",
+                    "emoney",
+                    "bank-account-inquiry"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TB002 - TRANSFER",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "// Fungsi untuk membuat string acak",
+                      "function generateRandomString(length) {",
+                      "    var result = '';",
+                      "    var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';",
+                      "    var charactersLength = characters.length;",
+                      "    for (var i = 0; i < length; i++) {",
+                      "        result += characters.charAt(Math.floor(Math.random() * charactersLength));",
+                      "    }",
+                      "    return result;",
+                      "}",
+                      "",
+                      "// Membuat variabel acak",
+                      "var partnerReferenceNo = generateRandomString(36);",
+                      "",
+                      "// Menyimpan nilai acak ke variabel Postman",
+                      "pm.variables.set(\"partnerReferenceNo\", partnerReferenceNo);",
+                      "",
+                      "const timestamp = Math.floor(Date.now() / 1000) % 10000000; // 7 digit terakhir ",
+                      "",
+                      "const randomPart = Math.floor(Math.random() * 1000); // Angka acak 3 digit",
+                      "const externalId = parseInt(`${timestamp}${randomPart}`.padEnd(10, '0').substring(0, 10));",
+                      "pm.variables.set(\"externalId\", externalId);",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ACCESS-TOKEN}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-TIMESTAMP",
+                    "value": "{{X-TIMESTAMP}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-PARTNER-ID",
+                    "value": "{{X-PARTNER-ID}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-EXTERNAL-ID",
+                    "value": "{{externalId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-SIGNATURE",
+                    "value": "{{X-SIGNATURE}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "CHANNEL-ID",
+                    "value": "{{CHANNEL-ID}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"partnerReferenceNo\": \"{{partnerReferenceNo}}\",\n    \"beneficiaryAccountNumber\" : \"111111\",\n    \"beneficiaryBankCode\" : \"014\",\n    \"sessionId\": \"INQ175736236237529408788874\",\n    \"amount\": {\n        \"value\": \"10000.00\",\n        \"currency\": \"IDR\"\n    },\n    \"additionalInfo\": {\n        \"callbackUrl\" : \"http://localhost/callback/partner\",\n        \"remark\": \"\"\n    }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/snap/v1.0/emoney/transfer-bank",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "snap",
+                    "v1.0",
+                    "emoney",
+                    "transfer-bank"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TB003 - CHECK STATUS TRANSFER",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ACCESS-TOKEN}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-TIMESTAMP",
+                    "value": "{{X-TIMESTAMP}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-PARTNER-ID",
+                    "value": "{{X-PARTNER-ID}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-EXTERNAL-ID",
+                    "value": "{{externalId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-SIGNATURE",
+                    "value": "{{X-SIGNATURE}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "CHANNEL-ID",
+                    "value": "{{CHANNEL-ID}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n     \"originalPartnerReferenceNo\": \"yKQC1WFSO9cmFGVa17sj6aqDXVUDqszRZBnC\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/snap/v1.0/emoney/transfer-bank/status",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "snap",
+                    "v1.0",
+                    "emoney",
+                    "transfer-bank",
+                    "status"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "CUSTOMER-TOPUP",
+          "item": [
+            {
+              "name": "CT001 - INQUIRY ACCOUNT",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "// // Fungsi untuk membuat string acak",
+                      "// function generateRandomString(length) {",
+                      "//     var result = '';",
+                      "//     var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';",
+                      "//     var charactersLength = characters.length;",
+                      "//     for (var i = 0; i < length; i++) {",
+                      "//         result += characters.charAt(Math.floor(Math.random() * charactersLength));",
+                      "//     }",
+                      "//     return result;",
+                      "// }",
+                      "",
+                      "// // Membuat variabel acak",
+                      "// var partnerReferenceNo = generateRandomString(36);",
+                      "",
+                      "// // Menyimpan nilai acak ke variabel Postman",
+                      "// pm.variables.set(\"partnerReferenceNo\", partnerReferenceNo);",
+                      "",
+                      "// const timestamp = Math.floor(Date.now() / 1000) % 10000000; // 7 digit terakhir ",
+                      "",
+                      "// const randomPart = Math.floor(Math.random() * 1000); // Angka acak 3 digit",
+                      "// const externalId = parseInt(`${timestamp}${randomPart}`.padEnd(10, '0').substring(0, 10));",
+                      "// pm.variables.set(\"externalId\", externalId);",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ACCESS-TOKEN}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-TIMESTAMP",
+                    "value": "{{X-TIMESTAMP}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-PARTNER-ID",
+                    "value": "{{X-PARTNER-ID}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-EXTERNAL-ID",
+                    "value": "{{externalId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-SIGNATURE",
+                    "value": "{{X-SIGNATURE}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "CHANNEL-ID",
+                    "value": "{{CHANNEL-ID}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"additionalInfo\": {\n        \"productCode\": \"GOPAY\"\n    },\n    \"amount\": {\n        \"currency\": \"IDR\",\n        \"value\": \"10000.00\"\n    },\n    \"customerNumber\": \"081999999999\",\n    \"partnerReferenceNo\": \"{{externalId}}\"\n}\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/snap/v1.0/emoney/account-inquiry",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "snap",
+                    "v1.0",
+                    "emoney",
+                    "account-inquiry"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "CT002 - TOPUP",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "// Fungsi untuk membuat string acak",
+                      "function generateRandomString(length) {",
+                      "    var result = '';",
+                      "    var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';",
+                      "    var charactersLength = characters.length;",
+                      "    for (var i = 0; i < length; i++) {",
+                      "        result += characters.charAt(Math.floor(Math.random() * charactersLength));",
+                      "    }",
+                      "    return result;",
+                      "}",
+                      "",
+                      "// Membuat variabel acak",
+                      "var partnerReferenceNo = generateRandomString(36);",
+                      "",
+                      "// Menyimpan nilai acak ke variabel Postman",
+                      "pm.variables.set(\"partnerReferenceNo\", partnerReferenceNo);",
+                      "",
+                      "const timestamp = Math.floor(Date.now() / 1000) % 10000000; // 7 digit terakhir ",
+                      "",
+                      "const randomPart = Math.floor(Math.random() * 1000); // Angka acak 3 digit",
+                      "const externalId = parseInt(`${timestamp}${randomPart}`.padEnd(10, '0').substring(0, 10));",
+                      "pm.variables.set(\"externalId\", externalId);",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ACCESS-TOKEN}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-TIMESTAMP",
+                    "value": "2025-01-30T12:38:12+07:00",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-PARTNER-ID",
+                    "value": "{{X-PARTNER-ID}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-EXTERNAL-ID",
+                    "value": "{{externalId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-SIGNATURE",
+                    "value": "AaE7rxaiIFPQYryj+JxwOi826dQG4e8RbzagEBaAywS4ETa490Cy/3b1/Ljqput67EF+OgE0V1GDw2t/lxqEJw==",
+                    "type": "text"
+                  },
+                  {
+                    "key": "CHANNEL-ID",
+                    "value": "95221",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"partnerReferenceNo\": \"{{partnerReferenceNo}}\",\n    \"customerNumber\" : \"08111\",\n    \"productCode\" : \"GOPAY\",\n    \"sessionId\" : \"INQ175800653978120703318523\",\n    \"amount\": {\n        \"value\": \"10000.00\",\n        \"currency\": \"IDR\"\n    },\n    \"additionalInfo\": {\n        \"callbackUrl\" : \"http://localhost/callback/partner\"\n    }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/snap/v1.0/emoney/topup",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "snap",
+                    "v1.0",
+                    "emoney",
+                    "topup"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "CT003 - TOPUP STATUS",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ACCESS-TOKEN}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-TIMESTAMP",
+                    "value": "2025-01-30T12:38:12+07:00",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-PARTNER-ID",
+                    "value": "{{X-PARTNER-ID}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-EXTERNAL-ID",
+                    "value": "{{externalId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-SIGNATURE",
+                    "value": "",
+                    "type": "text"
+                  },
+                  {
+                    "key": "CHANNEL-ID",
+                    "value": "95221",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"originalPartnerReferenceNo\": \"4gODwT7k9AWY1dCvJcL37VCGR7dC3HxV1dEL\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/snap/v1.0/emoney/topup/status",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "snap",
+                    "v1.0",
+                    "emoney",
+                    "topup",
+                    "status"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "#8 BALANCE",
+      "item": [
+        {
+          "name": "B001 - INQUIRY",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// // Fungsi untuk membuat string acak",
+                  "// function generateRandomString(length) {",
+                  "//     var result = '';",
+                  "//     var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';",
+                  "//     var charactersLength = characters.length;",
+                  "//     for (var i = 0; i < length; i++) {",
+                  "//         result += characters.charAt(Math.floor(Math.random() * charactersLength));",
+                  "//     }",
+                  "//     return result;",
+                  "// }",
+                  "",
+                  "// // Membuat variabel acak",
+                  "// var partnerReferenceNo = generateRandomString(36);",
+                  "",
+                  "// // Menyimpan nilai acak ke variabel Postman",
+                  "// pm.variables.set(\"partnerReferenceNo\", partnerReferenceNo);",
+                  "",
+                  "// const timestamp = Math.floor(Date.now() / 1000) % 10000000; // 7 digit terakhir ",
+                  "",
+                  "// const randomPart = Math.floor(Math.random() * 1000); // Angka acak 3 digit",
+                  "// const externalId = parseInt(`${timestamp}${randomPart}`.padEnd(10, '0').substring(0, 10));",
+                  "// pm.variables.set(\"externalId\", externalId);",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS-TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-TIMESTAMP",
+                "value": "{{X-TIMESTAMP}}",
+                "type": "text"
+              },
+              {
+                "key": "X-PARTNER-ID",
+                "value": "{{X-PARTNER-ID}}",
+                "type": "text"
+              },
+              {
+                "key": "X-EXTERNAL-ID",
+                "value": "{{externalId}}",
+                "type": "text"
+              },
+              {
+                "key": "X-SIGNATURE",
+                "value": "{{X-SIGNATURE}}",
+                "type": "text"
+              },
+              {
+                "key": "CHANNEL-ID",
+                "value": "{{CHANNEL-ID}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"partnerReferenceNo\": \"{{externalId}}\",\n    \"accountNo\": \"{{ACCOUNT_NUMBER}}\",\n    \"balanceTypes\": [\"BALANCE\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/snap/v1.0/balance-inquiry",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "snap",
+                "v1.0",
+                "balance-inquiry"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "B001 - INQUIRY",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ACCESS-TOKEN}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-TIMESTAMP",
+                    "value": "{{X-TIMESTAMP}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-PARTNER-ID",
+                    "value": "{{X-PARTNER-ID}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-EXTERNAL-ID",
+                    "value": "{{externalId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-SIGNATURE",
+                    "value": "{{X-SIGNATURE}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "CHANNEL-ID",
+                    "value": "{{CHANNEL-ID}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"partnerReferenceNo\": \"{{partnerReferenceNo}}\",\n    \"accountNo\": \"0310122755265432\",\n    \"balanceTypes\": [\"BALANCE\"]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://staging.pakailink.id/snap/v1.0/balance-inquiry",
+                  "protocol": "https",
+                  "host": [
+                    "staging",
+                    "pakailink",
+                    "id"
+                  ],
+                  "path": [
+                    "snap",
+                    "v1.0",
+                    "balance-inquiry"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Mon, 21 Jul 2025 04:43:19 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "430"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "7596258b-3260-4ce0-bfa0-7d238fd28770"
+                },
+                {
+                  "key": "Server",
+                  "value": "elb"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"responseCode\": \"2001100\",\n    \"responseMessage\": \"Successful\",\n    \"referenceNo\": \"INQ175307299959777708712406\",\n    \"partnerReferenceNo\": \"vg9QJ0oABHXufO1tkV2UhroVpBFX3L9nkn9T\",\n    \"accountNo\": \"0310122755265432\",\n    \"name\": \"Merchant Internal\",\n    \"accountInfo\": [\n        {\n            \"activeBalance\": {\n                \"currency\": \"IDR\",\n                \"value\": \"85280.00\"\n            },\n            \"balanceType\": \"Balance\",\n            \"freezeBalance\": {\n                \"currency\": \"IDR\",\n                \"value\": \"0.00\"\n            },\n            \"holdBalance\": {\n                \"currency\": \"IDR\",\n                \"value\": \"0.00\"\n            },\n            \"status\": \"0001\"\n        }\n    ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "#CALLBACK",
+      "item": [
+        {
+          "name": "CB01 - CALLBACK SIMULATION",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Fungsi untuk membuat string acak",
+                  "function generateRandomString(length) {",
+                  "    var result = '';",
+                  "    var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';",
+                  "    var charactersLength = characters.length;",
+                  "    for (var i = 0; i < length; i++) {",
+                  "        result += characters.charAt(Math.floor(Math.random() * charactersLength));",
+                  "    }",
+                  "    return result;",
+                  "}",
+                  "",
+                  "// Membuat variabel acak",
+                  "var partnerReferenceNo = generateRandomString(36);",
+                  "",
+                  "// Menyimpan nilai acak ke variabel Postman",
+                  "pm.variables.set(\"partnerReferenceNo\", partnerReferenceNo);",
+                  "",
+                  "const timestamp = Math.floor(Date.now() / 1000) % 10000000; // 7 digit terakhir ",
+                  "",
+                  "const randomPart = Math.floor(Math.random() * 1000); // Angka acak 3 digit",
+                  "const externalId = parseInt(`${timestamp}${randomPart}`.padEnd(10, '0').substring(0, 10));",
+                  "pm.variables.set(\"externalId\", externalId);",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text",
+                "disabled": true
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n     \"transactionId\":\"EMO177510189412757508160914\",\n     \"status\" : \"0\" //0 = failed 1= success\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://sandbox-payment.pakailink.id/v1.0/callback-simulation",
+              "protocol": "https",
+              "host": [
+                "sandbox-payment",
+                "pakailink",
+                "id"
+              ],
+              "path": [
+                "v1.0",
+                "callback-simulation"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "B001 - INQUIRY",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ACCESS-TOKEN}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-TIMESTAMP",
+                    "value": "{{X-TIMESTAMP}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-PARTNER-ID",
+                    "value": "{{X-PARTNER-ID}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-EXTERNAL-ID",
+                    "value": "{{externalId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-SIGNATURE",
+                    "value": "{{X-SIGNATURE}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "CHANNEL-ID",
+                    "value": "{{CHANNEL-ID}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"partnerReferenceNo\": \"{{partnerReferenceNo}}\",\n    \"accountNo\": \"0310122755265432\",\n    \"balanceTypes\": [\"BALANCE\"]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://staging.pakailink.id/snap/v1.0/balance-inquiry",
+                  "protocol": "https",
+                  "host": [
+                    "staging",
+                    "pakailink",
+                    "id"
+                  ],
+                  "path": [
+                    "snap",
+                    "v1.0",
+                    "balance-inquiry"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Mon, 21 Jul 2025 04:43:19 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "430"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "7596258b-3260-4ce0-bfa0-7d238fd28770"
+                },
+                {
+                  "key": "Server",
+                  "value": "elb"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"responseCode\": \"2001100\",\n    \"responseMessage\": \"Successful\",\n    \"referenceNo\": \"INQ175307299959777708712406\",\n    \"partnerReferenceNo\": \"vg9QJ0oABHXufO1tkV2UhroVpBFX3L9nkn9T\",\n    \"accountNo\": \"0310122755265432\",\n    \"name\": \"Merchant Internal\",\n    \"accountInfo\": [\n        {\n            \"activeBalance\": {\n                \"currency\": \"IDR\",\n                \"value\": \"85280.00\"\n            },\n            \"balanceType\": \"Balance\",\n            \"freezeBalance\": {\n                \"currency\": \"IDR\",\n                \"value\": \"0.00\"\n            },\n            \"holdBalance\": {\n                \"currency\": \"IDR\",\n                \"value\": \"0.00\"\n            },\n            \"status\": \"0001\"\n        }\n    ]\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {
+          "npm:moment": {
+            "id": "npm:moment"
+          },
+          "npm:node-forge": {
+            "id": "npm:node-forge"
+          }
+        },
+        "requests": {},
+        "exec": [
+          "const moment = pm.require(\"npm:moment\")",
+          "const uuid = require('uuid')",
+          "const CryptoJS = require(\"crypto-js\")",
+          "const forge = pm.require(\"npm:node-forge\")",
+          "",
+          "var tstamp = moment().format(\"YYYY-MM-DDTHH:mm:ssZ\")",
+          "pm.collectionVariables.set(\"X-TIMESTAMP\", tstamp)",
+          "",
+          "var clientKey = pm.collectionVariables.get(\"X-CLIENT-KEY\")",
+          "var privateKey = pm.collectionVariables.get(\"PRIVATE_KEY\")",
+          "var BASE_URL = pm.collectionVariables.get(\"BASE_URL\")",
+          "",
+          "function SHA256withRSA(data, key) {",
+          "    const privateKey = forge.pki.privateKeyFromPem(key)",
+          "    const md = forge.md.sha256.create()",
+          "    md.update(data, \"utf8\")",
+          "",
+          "    return Buffer.from(privateKey.sign(md), \"binary\").toString(\"base64\")",
+          "}",
+          "",
+          "function createTransactionSignature(date, accessToken, secretKey) {",
+          "    let signature = ''",
+          "    try {",
+          "        const method = pm.request.method",
+          "        const endpoint = pm.request.url.getPath()",
+          "        const timestamp = date",
+          "        const body = pm.request.body && pm.request.body.raw ? pm.collectionVariables.replaceIn(pm.request.body.raw) : \"{}\"",
+          "        let minified = JSON.stringify(JSON.parse(body))",
+          "        ",
+          "        const hash = CryptoJS.SHA256(minified).toString(CryptoJS.enc.Hex).toLowerCase()",
+          "",
+          "        const stringToSign = `${method}:${endpoint}:${accessToken}:${hash}:${timestamp}`",
+          "        ",
+          "        signature = CryptoJS.HmacSHA512(stringToSign, secretKey).toString(CryptoJS.enc.Base64)",
+          "    } catch (e) {",
+          "        console.log(\"createTransactionSignature\", e.message)",
+          "        console.log(e.stack)",
+          "    }",
+          "",
+          "    return signature",
+          "}",
+          "",
+          "if (pm.request.url.path.indexOf('access-token') < 0) {",
+          "    var stsign = clientKey + \"|\" + tstamp",
+          "    var authSig = SHA256withRSA(stsign, privateKey)",
+          "    let req = {",
+          "        url: `${BASE_URL}/snap/v1.0/access-token/b2b`,",
+          "        method: 'POST',",
+          "        header: {",
+          "            \"X-CLIENT-KEY\": clientKey,",
+          "            \"X-TIMESTAMP\": tstamp,",
+          "            \"X-SIGNATURE\": authSig,",
+          "            \"Content-type\": \"application/json\"",
+          "        },",
+          "        body: {",
+          "            mode: \"raw\",",
+          "            raw: JSON.stringify({\"grantType\":\"client_credentials\"})",
+          "        }",
+          "    }",
+          "    pm.sendRequest(req, (res, err) => {",
+          "        if (err) throw err",
+          "        let token = res.json()",
+          "        pm.collectionVariables.set(\"ACCESS-TOKEN\", token.accessToken)",
+          "        ",
+          "        var accessToken = pm.collectionVariables.get(\"ACCESS-TOKEN\")",
+          "        var secretKey = pm.collectionVariables.get(\"CLIENT_SECRET\")",
+          "        var id = uuid.v4()",
+          "        pm.collectionVariables.set(\"externalId\", id)",
+          "        pm.collectionVariables.set(\"X-TIMESTAMP\", tstamp)",
+          "",
+          "        var sig = createTransactionSignature(tstamp, accessToken, secretKey)",
+          "        pm.collectionVariables.set(\"X-SIGNATURE\", sig)",
+          "    })",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "BASE_URL_PRODUCTION",
+      "value": ""
+    },
+    {
+      "key": "BASE_URL_BETA",
+      "value": "http://api-paymentgateway-beta.pakaidonk.id"
+    },
+    {
+      "key": "BASE_URL",
+      "value": ""
+    },
+    {
+      "key": "BASE_URL_PARTNER_DEV",
+      "value": ""
+    },
+    {
+      "key": "X-CLIENT-KEY",
+      "value": ""
+    },
+    {
+      "key": "X-SIGNATURE-ASYM",
+      "value": ""
+    },
+    {
+      "key": "X-SIGNATURE",
+      "value": ""
+    },
+    {
+      "key": "X-TIMESTAMP",
+      "value": ""
+    },
+    {
+      "key": "ACCESS-TOKEN",
+      "value": ""
+    },
+    {
+      "key": "X-PARTNER-ID",
+      "value": "PTR0000003"
+    },
+    {
+      "key": "CHANNEL-ID",
+      "value": "95221"
+    },
+    {
+      "key": "BASE_URL_CALLBACK",
+      "value": "http://localhost:7703"
+    },
+    {
+      "key": "PRIVATE_KEY",
+      "value": ""
+    },
+    {
+      "key": "CLIENT_SECRET",
+      "value": ""
+    },
+    {
+      "key": "externalId",
+      "value": ""
+    },
+    {
+      "key": "ACCOUNT_NUMBER",
+      "value": ""
+    }
+  ]
+}
