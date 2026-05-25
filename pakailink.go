@@ -443,7 +443,7 @@ func (p *PakaiLink) DevelopmentCallback(referenceNo string, success ...bool) (er
 		"status": "%s"
 	}`, referenceNo, strStatus)
 	var req *http.Request
-	uri := fmt.Sprintf("%s%s", p.Config.BaseURL, "/v1.0/callback-simulation")
+	uri := "https://sandbox-payment.pakailink.id/v1.0/callback-simulation"
 	req, err = http.NewRequest("POST", uri, strings.NewReader(payload))
 	if err == nil {
 		req.Header.Set("Content-type", "application/json")
