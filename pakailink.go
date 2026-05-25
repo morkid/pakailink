@@ -432,15 +432,39 @@ func (p *PakaiLink) getToken() (token string, err error) {
 }
 
 // DevelopmentCallback trigger development callback
-func (p *PakaiLink) DevelopmentCallback(referenceNo string, success ...bool) error {
+func (p *PakaiLink) DevelopmentCallback(referenceNo string, success ...bool) (err error) {
 	strStatus := "1"
 	if len(success) > 0 && !success[0] {
 		strStatus = "0"
 	}
-	_, err := p.request("/v1.0/callback-simulation", map[string]any{
-		"transactionId": referenceNo,
-		"status":        strStatus,
-	}, referenceNo)
+
+	payload := fmt.Sprintf(`{
+		"transactionId": "%s",
+		"status": "%s"
+	}`, referenceNo, strStatus)
+	var req *http.Request
+	uri := fmt.Sprintf("%s%s", p.Config.BaseURL, "/v1.0/callback-simulation")
+	req, err = http.NewRequest("POST", uri, strings.NewReader(payload))
+	if err == nil {
+		req.Header.Set("Content-type", "application/json")
+		var res *http.Response
+		res, err = p.client().Do(req)
+		if err == nil && res.StatusCode == http.StatusOK {
+			var body []byte
+			defer res.Body.Close()
+			body, err = io.ReadAll(res.Body)
+			if err == nil {
+				result := struct {
+					Status  bool   `json:"status"`
+					Message string `json:"message"`
+				}{}
+				err = json.Unmarshal(body, &result)
+				if err == nil && !result.Status {
+					err = fmt.Errorf("callback failed: %s", result.Message)
+				}
+			}
+		}
+	}
 
 	return err
 }
