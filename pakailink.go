@@ -431,6 +431,20 @@ func (p *PakaiLink) getToken() (token string, err error) {
 	return
 }
 
+// DevelopmentCallback trigger development callback
+func (p *PakaiLink) DevelopmentCallback(referenceNo string, success ...bool) error {
+	strStatus := "1"
+	if len(success) > 0 && !success[0] {
+		strStatus = "0"
+	}
+	_, err := p.request("/v1.0/callback-simulation", map[string]any{
+		"transactionId": referenceNo,
+		"status":        strStatus,
+	}, referenceNo)
+
+	return err
+}
+
 func (p *PakaiLink) request(path string, body any, requestID string) (res *http.Response, err error) {
 	date := time.Now()
 	tstamp := date.Format(time.RFC3339Nano)
